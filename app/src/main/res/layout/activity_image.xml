@@ -8,5 +8,6 @@
         android:id="@+id/iv_image"
         android:layout_width="match_parent"
         android:layout_height="240dp"
+        android:longClickable="true"
         app:srcCompat="@drawable/googleg_disabled_color_18" />
 </RelativeLayout>

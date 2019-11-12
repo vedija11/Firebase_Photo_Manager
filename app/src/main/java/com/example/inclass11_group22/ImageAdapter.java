@@ -60,7 +60,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
                 @Override
                 public boolean onLongClick(View view) {
                     listener.onItemLongClick(bitmap);
-                    return false;
+                    return true;
                 }
             });
         }
