@@ -3,6 +3,7 @@ package com.example.inclass11_group22;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
@@ -18,14 +19,18 @@ import android.widget.ProgressBar;
 
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.ListResult;
 import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     static final int REQUEST_IMAGE_CAPTURE = 1;
@@ -35,7 +40,8 @@ public class MainActivity extends AppCompatActivity {
     Button button_upload;
     ProgressBar progressBar;
     Bitmap bitmapUpload = null;
-
+    ArrayList<String> ImageURLsList=new ArrayList<>();
+    static ImageAdapter imageAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,6 +50,39 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerView);
         button_upload = findViewById(R.id.button_upload);
         progressBar = findViewById(R.id.progressBar);
+
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        final StorageReference listRef = storage.getReference().child("images/");
+
+        listRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+            @Override
+            public void onSuccess(ListResult listResult) {
+                for (StorageReference storeRef: listResult.getItems()) {
+                    storeRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                        @Override
+                        public void onSuccess(Uri uri) {
+                            Log.d(TAG, "onSuccess: "+uri.toString());
+                            ImageURLsList.add(uri.toString());
+                            Log.d(TAG, "URL: "+ImageURLsList);
+
+                            recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                            imageAdapter = new ImageAdapter(ImageURLsList, new ImageAdapter.OnItemLongClickListener() {
+                                @Override
+                                public void onItemLongClick(String item) {
+                                    Log.d(TAG, "Deleting: "+item);
+                                    ImageURLsList.remove(ImageURLsList.indexOf(item));
+                                    imageAdapter.notifyDataSetChanged();
+                                }
+                            });
+
+                            recyclerView.setAdapter(imageAdapter);
+
+                        }
+                    });
+                }
+
+            }
+        });
 
         button_upload.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -58,11 +97,13 @@ public class MainActivity extends AppCompatActivity {
         FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
         StorageReference storageReference = firebaseStorage.getReference();
 
-        final StorageReference imageRepo = storageReference.child("images/camera.jpg");
+
+
+        final StorageReference imageRepo = storageReference.child("images/"+ UUID.randomUUID().toString() +".jpeg");
 
 //        Converting the Bitmap into a bytearrayOutputstream....
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        photoBitmap.compress(Bitmap.CompressFormat.PNG, 50, baos);
+        photoBitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos);
         byte[] data = baos.toByteArray();
 
         UploadTask uploadTask = imageRepo.putBytes(data);
@@ -94,7 +135,9 @@ public class MainActivity extends AppCompatActivity {
                 if (task.isSuccessful()){
                     Log.d(TAG, "Image Download URL"+ task.getResult());
                     String imageURL = task.getResult().toString();
-
+                    Log.d(TAG, "onSuccess: "+task.getResult());
+                    ImageURLsList.add(imageURL);
+                    imageAdapter.notifyDataSetChanged();
                     //Picasso.get().load(imageURL).into(iv_uploadedPhoto);
                 }
             }

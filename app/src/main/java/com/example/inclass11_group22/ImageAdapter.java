@@ -1,6 +1,7 @@
 package com.example.inclass11_group22;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,20 +11,23 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.squareup.picasso.Picasso;
+
 import java.util.List;
 
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> {
 
-    List<Bitmap> bitmapList;
-    private final OnItemLongClickListener listener;
+    List<String> bitmapList;
 
-    public ImageAdapter(List<Bitmap> bitmapList, OnItemLongClickListener listener) {
+    public ImageAdapter(List<String> bitmapList, OnItemLongClickListener listener) {
         this.bitmapList = bitmapList;
-        this.listener = listener;
     }
 
     public interface OnItemLongClickListener {
-        void onItemLongClick(Bitmap item);
+        void onItemLongClick(String item);
     }
 
     @NonNull
@@ -36,26 +40,43 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ImageAdapter.ViewHolder holder, int position) {
-        holder.bind(bitmapList.get(position),listener);
-        Bitmap bitmap = bitmapList.get(position);
-        holder.iv_image.setImageBitmap(bitmap);
+    public void onBindViewHolder(@NonNull ImageAdapter.ViewHolder holder, final int position) {
+        holder.bind(bitmapList.get(position));
+        String bitmap = bitmapList.get(position);
+        Picasso.get().load(bitmap).into(holder.iv_image);
+        holder.iv_image.setTag(bitmap);
+        holder.iv_image.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
+                StorageReference storageReference = firebaseStorage.getReferenceFromUrl(bitmapList.get(position));
+                storageReference.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        bitmapList.remove(position);
+                        MainActivity.imageAdapter.notifyDataSetChanged();
+                    }
+                });
+                return false;
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
-        return 0;
+        return bitmapList.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder{
         ImageView iv_image;
+        OnItemLongClickListener listener;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             iv_image = itemView.findViewById(R.id.iv_image);
         }
 
-        public void bind(final Bitmap bitmap, final OnItemLongClickListener listener) {
+        public void bind(final String bitmap) {
             itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View view) {
